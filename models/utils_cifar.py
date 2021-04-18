@@ -103,7 +103,7 @@ def train(args, model, optimizer, epoch, trainloader, trainset, use_cuda, train_
 
         z, trace = model(inputs)  # Forward Propagation
         # compute loss
-        logpz = model.logpz(z, targets)
+        logpz = model.module.logpz(z, targets)
         logpx = logpz + trace
         loss = bits_per_dim(logpx, inputs).mean()
 
@@ -168,22 +168,22 @@ def train(args, model, optimizer, epoch, trainloader, trainset, use_cuda, train_
 
 
 
-def test(best_result, args, model, epoch, testloader, use_cuda, test_log):
+def test(best_result, args, model, epoch, testloader, use_cuda, test_log, task):
     model.eval()
-    objective = 0.
+    correct = 0.
     total = 0
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, requires_grad=True), Variable(targets)
-
-
-        z, logpz, trace = model(inputs)
-        logpx = logpz + trace
-        loss = bits_per_dim(logpx, inputs)
-
-        objective += -loss.cpu().sum().item()
-
+    if task == 'sampling':
+        raise NotImplementedError
+    else:
+        for batch_idx, (inputs, targets) in enumerate(testloader):
+            if use_cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            inputs, targets = Variable(inputs, requires_grad=True), Variable(targets)
+            z, trace = model(inputs)
+            logpz = model.module.logpz(z)
+            predicted = torch.argmax(logpz,dim=0)
+            correct += predicted.eq(targets).sum().item()
+            total += targets.size(0)
         # visualization and samples
         if batch_idx == 0:
             x_re = model.module.inverse(z, 10) if use_cuda else model.inverse(z, 10)

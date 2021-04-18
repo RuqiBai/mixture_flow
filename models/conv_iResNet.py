@@ -260,16 +260,18 @@ class conv_iResNet(nn.Module):
 
     def _make_prior(self, learn_prior):
         dim = np.prod(self.in_shapes[0])
-        self.prior_mu = []
-        self.prior_logstd = []
-        for i in range(self.nClasses):
-            self.prior_mu.append(nn.Parameter(torch.zeros((dim,)).float(), requires_grad=learn_prior))
-            self.prior_logstd.append(nn.Parameter(torch.zeros((dim,)).float(), requires_grad=learn_prior))
-
-
-    def prior(self, label):
-        return distributions.Normal(self.prior_mu[label], torch.exp(self.prior_logstd[label]))
-
+        self.prior_mu = nn.Parameter(torch.zeros((self.nClasses, dim)).float(), requires_grad=learn_prior)
+        self.prior_logstd = nn.Parameter(torch.zeros((self.nClasses, dim)).float(), requires_grad=learn_prior)
+    
+    def prior(self, label=None):
+        if label:
+            return distributions.Normal(self.prior_mu[label], torch.exp(self.prior_logstd[label]))
+        else:
+            logpz = []
+            for i in range(self.nClasses):
+                logpz.append(distributions.Normal(self.prior_mu[i], torch.exp(self.prior_logstd[i])))
+            return logpz
+    
     def logpz(self, z, label):
         return self.prior(label).log_prob(z.view(z.size(0), -1)).sum(dim=1)
 
