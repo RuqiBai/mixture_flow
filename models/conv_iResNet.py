@@ -263,18 +263,16 @@ class conv_iResNet(nn.Module):
         self.prior_mu = nn.Parameter(torch.zeros((self.nClasses, dim)).float(), requires_grad=learn_prior)
         self.prior_logstd = nn.Parameter(torch.zeros((self.nClasses, dim)).float(), requires_grad=learn_prior)
     
-    def prior(self, label=None):
-        if label:
-            return distributions.Normal(self.prior_mu[label], torch.exp(self.prior_logstd[label]))
-        else:
-            logpz = []
-            for i in range(self.nClasses):
-                logpz.append(distributions.Normal(self.prior_mu[i], torch.exp(self.prior_logstd[i])))
-            return logpz
+    def prior(self, label):
+        return distributions.Normal(self.prior_mu[label], torch.exp(self.prior_logstd[label]))
+
     
     def logpz(self, z, label):
         return self.prior(label).log_prob(z.view(z.size(0), -1)).sum(dim=1)
-
+    def logpx(self, x, label):
+        z, trace = self(x)
+        logpz = self.logpz(z, label)
+        return logpz + trace
     def _make_stack(self, nChannels, nBlocks, nStrides, in_shape, coeff, block,
                     actnorm, n_power_iter, nonlin):
         """ Create stack of iresnet blocks """
@@ -341,16 +339,10 @@ class conv_iResNet(nn.Module):
         for block in self.stack:
             z, trace = block(z, ignore_logdet=ignore_logdet)
             traces.append(trace)
-
-        # no classification head
-
-        # add logdets
         tmp_trace = torch.zeros_like(traces[0])
         for k in range(len(traces)):
             tmp_trace += traces[k]
-
         return z, tmp_trace
-
 
     def inverse(self, z, max_iter=10):
         """ iresnet inverse """
@@ -359,6 +351,19 @@ class conv_iResNet(nn.Module):
             for i in range(len(self.stack)):
                 x = self.stack[-1 - i].inverse(x, maxIter=max_iter)
         return x
+
+    def classify(self, x):
+        z, trace = self(x)
+        max_logpx = -np.inf
+        max_likelihood = -1
+        for i in range(self.nClasses):
+            logpz = self.logpz(z, i)
+            print(logpz)
+            logpx = logpz + trace
+            if logpx > max_logpx:
+                max_likelihood = i
+                max_logpx = logpx
+        return max_likelihood
 
     def sample(self, batch_size, max_iter=10):
         """sample from prior and invert"""
@@ -374,6 +379,17 @@ class conv_iResNet(nn.Module):
                 layer.numSeriesTerms = n_terms
 
 
+def iResNet64():
+    return conv_iResNet(nBlocks=[7,7,7], nStrides=[1,1,1],
+                                nChannels=[32,64,128], nClasses=10,
+                                in_shape=[3,32,32],
+                                coeff=0.9,
+                                numTraceSamples=1,
+                                numSeriesTerms=1,
+                                n_power_iter = 5,
+                                actnorm=(not True),
+                                learn_prior=True,
+                                nonlin="elu")
 if __name__ == "__main__":
     scale = 1.
     loc = 0.
