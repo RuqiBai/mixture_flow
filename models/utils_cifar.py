@@ -24,8 +24,6 @@ def out_im(im):
 
 
 
-
-
 def try_make_dir(d):
     if not os.path.isdir(d):
         os.mkdir(d)

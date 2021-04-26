@@ -257,7 +257,6 @@ class conv_iResNet(nn.Module):
         # make prior distribution
         self._make_prior(learn_prior)
 
-
     def _make_prior(self, learn_prior):
         dim = np.prod(self.in_shapes[0])
         self.prior_mu = nn.Parameter(torch.zeros((self.nClasses, dim)).float(), requires_grad=learn_prior)
@@ -266,13 +265,9 @@ class conv_iResNet(nn.Module):
     def prior(self, label):
         return distributions.Normal(self.prior_mu[label], torch.exp(self.prior_logstd[label]))
 
-    
     def logpz(self, z, label):
         return self.prior(label).log_prob(z.view(z.size(0), -1)).sum(dim=1)
-    def logpx(self, x, label):
-        z, trace = self(x)
-        logpz = self.logpz(z, label)
-        return logpz + trace
+
     def _make_stack(self, nChannels, nBlocks, nStrides, in_shape, coeff, block,
                     actnorm, n_power_iter, nonlin):
         """ Create stack of iresnet blocks """
@@ -354,23 +349,31 @@ class conv_iResNet(nn.Module):
 
     def classify(self, x):
         z, trace = self(x)
-        max_logpx = -np.inf
-        max_likelihood = -1
+        max_logpx = None
         for i in range(self.nClasses):
             logpz = self.logpz(z, i)
-            print(logpz)
             logpx = logpz + trace
-            if logpx > max_logpx:
-                max_likelihood = i
+            if max_logpx is None:
                 max_logpx = logpx
+                max_likelihood = torch.zeros_like(logpx)
+            else:
+                mask = logpx.gt(max_logpx)
+                # print(logpx)
+                # print(max_logpx)
+                # print(mask)
+                max_logpx = logpx * mask + max_logpx * (mask.logical_not())
+                # print(max_logpx)
+                max_likelihood = i * mask + max_likelihood * (mask.logical_not())
+
+
         return max_likelihood
 
-    def sample(self, batch_size, max_iter=10):
+    def sample(self, batch_size, label, max_iter=10):
         """sample from prior and invert"""
         with torch.no_grad():
             # only send batch_size to prior, prior has final_shape as attribute
-            samples = self.prior().rsample((batch_size,))
-            samples = samples.view((batch_size,) + self.final_shape)
+            samples = self.prior(label=label).rsample((batch_size,))
+            samples = samples.view([batch_size,] + self.final_shape)
             return self.inverse(samples, max_iter=max_iter)
 
     def set_num_terms(self, n_terms):
