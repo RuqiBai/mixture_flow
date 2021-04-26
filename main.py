@@ -10,7 +10,6 @@ from torch.autograd import Variable
 import numpy as np
 import torchvision
 import torchvision.transforms as transforms
-import visdom
 import os
 import sys
 import time
