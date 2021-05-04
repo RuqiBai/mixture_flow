@@ -21,8 +21,9 @@ Suppose we have observed data multinomial(N, p) and p_Y(y), we could build a gen
 3) Using the same hyperparameter to initialize mu and sigma, but make them learnable. With training, the gaussian starts to close to each other:
 ![myplot_fix](https://user-images.githubusercontent.com/51713050/116956277-e09ba000-ac62-11eb-9bc4-faa1a596fdc2.png)
 
-4) Finally, we try to not only maximize the likelihood of p(x|y), but also minimize the likelihood of p(x|!y). With a tuning parameter, we could control the learning task between the maximization and minimization.
- 
+4) Finally, we try to not only maximize the likelihood of p(x|y), but also minimize the likelihood of p(x|!y). With a tuning parameter, we could control the learning task between the maximization and minimization. If the tuning parameter is too large (=1), the optimization will focus on minimizing p(x|!y), which lead to the diverge. If we shrink the tuning parameter to (=0.1). With training, the gaussians learn to smaller their covariance. And if we tune the tuning parameter to make it even smaller (=0.01), the constraint doesn't help for the problem. 
+![image](https://user-images.githubusercontent.com/51713050/116958211-ca441300-ac67-11eb-9d10-45acf2d6ec6c.png)
+
 ## Installation
 The code is running with env: pytorch 1.7, torchvision 0.8.2 , numpy 1.19.2 and matplotlib 3.3.2. (Not tested in other version.) 
 ## Evaluation
@@ -30,4 +31,4 @@ The code is running with env: pytorch 1.7, torchvision 0.8.2 , numpy 1.19.2 and 
 python main.py
 ```
 ## Summary
-I will continue to try to make this idea work. Currently, it seems that the learning is very sensitive to hyperparameters. 
+I will continue to try to make this idea work. Currently, it seems that the learning is very sensitive to hyperparameters like the learning rate, tuning parameter and how to initialize the gaussian parameters. While my greedy search for these parameter, I will review more literature and think this problem mathematically.
