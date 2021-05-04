@@ -18,7 +18,8 @@ import pdb
 import random
 import json
 from models.conv_iResNet import iResNet64
-
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 
 parser = argparse.ArgumentParser(description='Train i-ResNet/ResNet on Cifar')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -33,7 +34,7 @@ parser.add_argument('-interpolate', '--interpolate', dest='interpolate', action=
 parser.add_argument('-analysisTraceEst', '--analysisTraceEst', dest='analysisTraceEst', action='store_true',
                     help='analysis of trace estimation')
 parser.add_argument('--epochs', default=200, type=int, help='number of epochs')
-parser.add_argument('--tuning', default=0.02, type=float, help='tuning parameter')
+parser.add_argument('--tuning', default=0.05, type=float, help='tuning parameter')
 args = parser.parse_args()
 
 
@@ -137,11 +138,30 @@ def main(args):
     best_acc = 0
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=70, gamma=0.2)
+    x_axis, y_axis = torch.randint(low=0,high=3072, size=(2,))
+    print(model.module.prior_mu.shape)
+    print(x_axis, y_axis)
+    fig, ax = plt.subplots()
+
+    for i in range(model.module.nClasses):
+        ax.add_patch(Ellipse((model.module.prior_mu[i, x_axis], model.module.prior_mu[i, y_axis]),
+                             width=model.module.prior_logstd[i, x_axis], height=model.module.prior_logstd[i, y_axis],
+                             linewidth=2, fill=None))
+    ax.autoscale_view()
+    plt.title("epoch {}".format(0))
+    plt.show()
     for epoch in range(1, 1 + args.epochs):
         # train
         train(epoch, model)
         scheduler.step()
         # test
+        fig, ax = plt.subplots()
+
+        for i in range(model.module.nClasses):
+            ax.add_patch(Ellipse((model.module.prior_mu[i,x_axis], model.module.prior_mu[i,y_axis]), width=model.module.prior_logstd[i,x_axis], height=model.module.prior_logstd[i,y_axis], linewidth=2, fill=None))
+        ax.autoscale_view()
+        plt.title("epoch {}".format(epoch))
+        plt.show()
         acc = classify(model, device, testloader)
         print('* Test results : objective = %.2f%%' % (100. * acc))
         if acc > best_acc:
