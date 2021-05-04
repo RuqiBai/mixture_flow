@@ -18,10 +18,16 @@ Suppose we have observed data multinomial(N, p) and p_Y(y), we could build a gen
 2) Then, we try to initialize the means and covariates to make them separate to each other and then fix these value. The accuracy freeze at around 10%.
 ![myplot](https://user-images.githubusercontent.com/51713050/116953860-53554d00-ac5c-11eb-87b7-1f03cafb9e10.png)
 
-3) Using the same hyperparameter to initialize mu and sigma, but make them learnable. 
+3) Using the same hyperparameter to initialize mu and sigma, but make them learnable. With training, the gaussian starts to close to each other:
+![myplot_fix](https://user-images.githubusercontent.com/51713050/116956277-e09ba000-ac62-11eb-9bc4-faa1a596fdc2.png)
+
+4) Finally, we try to not only maximize the likelihood of p(x|y), but also minimize the likelihood of p(x|!y). With a tuning parameter, we could control the learning task between the maximization and minimization.
+ 
 ## Installation
 The code is running with env: pytorch 1.7, torchvision 0.8.2 , numpy 1.19.2 and matplotlib 3.3.2. (Not tested in other version.) 
 ## Evaluation
 ```
 python main.py
 ```
+## Summary
+I will continue to try to make this idea work. Currently, it seems that the learning is very sensitive to hyperparameters. 
